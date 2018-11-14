@@ -39,23 +39,21 @@ func main() {
 		offerString = args[len(args)-1]
 	}
 
-	var err error
+	var sr sessionRunner
 	if len(offerString) == 0 {
-		hc := hostSession{
+		sr = &hostSession{
 			oneWay:         *oneWay,
 			cmd:            cmd,
 			nonInteractive: *nonInteractive || *ni,
 		}
-		hc.stunServers = []string{*stunServer}
-		err = hc.run()
 	} else {
-		cc := clientSession{
+		sr = &clientSession{
 			offerString: offerString,
 		}
-		cc.stunServers = []string{*stunServer}
-		err = cc.run()
 	}
-	if err != nil {
+
+	sr.setStuntServers(*stunServer)
+	if err := sr.run(); err != nil {
 		fmt.Printf("Quitting with an unexpected error: \"%s\"\n", err)
 	}
 }

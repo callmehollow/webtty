@@ -11,6 +11,11 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
+type sessionRunner interface {
+	run() error
+	setStuntServers(...string)
+}
+
 type session struct {
 	// mutex?
 	oldTerminalState *terminal.State
@@ -84,4 +89,8 @@ func (s *session) createPeerConnection() (err error) {
 		log.Printf("ICE Connection State has changed: %s\n", connectionState.String())
 	}
 	return
+}
+
+func (s *session) setStuntServers(servers ...string) {
+	s.stunServers = servers
 }
