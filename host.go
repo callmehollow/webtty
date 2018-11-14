@@ -151,7 +151,7 @@ func (hs *hostSession) dataChannelOnMessage() func(payload datachannel.Payload) 
 		default:
 			hs.errChan <- fmt.Errorf(
 				"Message with type %s from DataChannel has no payload",
-				p.PayloadType().String())
+				p.PayloadType())
 		}
 	}
 }

@@ -31,10 +31,7 @@ type session struct {
 func (s *session) init() (err error) {
 	s.errChan = make(chan error, 1)
 	s.isTerminal = terminal.IsTerminal(int(os.Stdin.Fd()))
-	if err = s.createPeerConnection(); err != nil {
-		return
-	}
-	return
+	return s.createPeerConnection()
 }
 
 func (s *session) cleanup() {
