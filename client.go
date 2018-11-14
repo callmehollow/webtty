@@ -110,12 +110,10 @@ func (cs *clientSession) run() (err error) {
 	cs.dc.Unlock()
 
 	if cs.offer, err = sd.Decode(cs.offerString); err != nil {
-		log.Println(err)
 		return
 	}
 	if cs.offer.Key != "" {
 		if err = cs.offer.Decrypt(); err != nil {
-			log.Println(err)
 			return
 		}
 	}
@@ -125,13 +123,11 @@ func (cs *clientSession) run() (err error) {
 	}
 
 	if err = cs.pc.SetRemoteDescription(offer); err != nil {
-		log.Println(err)
 		return err
 	}
 	// Sets the LocalDescription, and starts our UDP listeners
 	answer, err := cs.pc.CreateAnswer(nil)
 	if err != nil {
-		log.Println(err)
 		return
 	}
 	answerSd := sd.SessionDescription{
