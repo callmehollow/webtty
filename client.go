@@ -39,7 +39,6 @@ func (cs *clientSession) dataChannelOnOpen() func() {
 		colorstring.Println("[bold]Terminal session started:")
 
 		if err := cs.makeRawTerminal(); err != nil {
-			log.Println(err)
 			cs.errChan <- err
 		}
 
@@ -49,7 +48,6 @@ func (cs *clientSession) dataChannelOnOpen() func() {
 			for range ch {
 				err := sendTermSize(os.Stdin, cs.dc.Send)
 				if err != nil {
-					log.Println(err)
 					cs.errChan <- err
 				}
 			}
@@ -59,12 +57,10 @@ func (cs *clientSession) dataChannelOnOpen() func() {
 		for {
 			nr, err := os.Stdin.Read(buf)
 			if err != nil {
-				log.Println(err)
 				cs.errChan <- err
 			}
 			err = cs.dc.Send(datachannel.PayloadBinary{Data: buf[0:nr]})
 			if err != nil {
-				log.Println(err)
 				cs.errChan <- err
 			}
 		}
@@ -82,15 +78,13 @@ func (cs *clientSession) dataChannelOnMessage() func(payload datachannel.Payload
 				cs.errChan <- nil
 				return
 			}
-			cs.errChan <- fmt.Errorf(`Unmatched string message: "%s"`, string(p.Data))
+			cs.errChan <- fmt.Errorf(`unmatched string message: "%s"`, string(p.Data))
 		case *datachannel.PayloadBinary:
 			f := bufio.NewWriter(os.Stdout)
 			f.Write(p.Data)
 			f.Flush()
 		default:
-			cs.errChan <- fmt.Errorf(
-				"Message with type %s from DataChannel has no payload",
-				p.PayloadType().String())
+			cs.errChan <- fmt.Errorf("message with type %s is empty", p.PayloadType())
 		}
 	}
 }
@@ -102,11 +96,11 @@ func (cs *clientSession) run() (err error) {
 
 	maxPacketLifeTime := uint16(1000) // Arbitrary
 	ordered := true
-	if cs.dc, err = cs.pc.CreateDataChannel("data", &webrtc.RTCDataChannelInit{
+	cs.dc, err = cs.pc.CreateDataChannel("data", &webrtc.RTCDataChannelInit{
 		Ordered:           &ordered,
 		MaxPacketLifeTime: &maxPacketLifeTime,
-	}); err != nil {
-		log.Println(err)
+	})
+	if err != nil {
 		return
 	}
 

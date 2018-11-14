@@ -32,7 +32,6 @@ func (s *session) init() (err error) {
 	s.errChan = make(chan error, 1)
 	s.isTerminal = terminal.IsTerminal(int(os.Stdin.Fd()))
 	if err = s.createPeerConnection(); err != nil {
-		log.Println(err)
 		return
 	}
 	return
@@ -50,7 +49,6 @@ func (s *session) cleanup() {
 			log.Println(err)
 		}
 	}
-
 }
 
 func (s *session) restoreTerminalState() error {
@@ -60,10 +58,9 @@ func (s *session) restoreTerminalState() error {
 	return nil
 }
 
-func (s *session) makeRawTerminal() error {
-	var err error
+func (s *session) makeRawTerminal() (err error) {
 	s.oldTerminalState, err = terminal.MakeRaw(int(os.Stdin.Fd()))
-	return err
+	return
 }
 
 func (s *session) createPeerConnection() (err error) {
@@ -86,7 +83,7 @@ func (s *session) createPeerConnection() (err error) {
 	// 	return errors.New("Couldn't create a peerConnection")
 	// }
 	s.pc.OnICEConnectionStateChange = func(connectionState ice.ConnectionState) {
-		log.Printf("ICE Connection State has changed: %s\n", connectionState.String())
+		log.Printf("ICE Connection State has changed: %s\n", connectionState)
 	}
 	return
 }

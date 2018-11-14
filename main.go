@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -51,9 +50,8 @@ func main() {
 			offerString: offerString,
 		}
 	}
-
 	sr.setStuntServers(*stunServer)
 	if err := sr.run(); err != nil {
-		fmt.Printf("Quitting with an unexpected error: \"%s\"\n", err)
+		log.Fatalf("session run interrupted unexpectedly: %v", err)
 	}
 }

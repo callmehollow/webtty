@@ -36,7 +36,6 @@ func (hs *hostSession) dataChannelOnOpen() func() {
 		var err error
 		hs.ptmx, err = pty.Start(cmd)
 		if err != nil {
-			log.Println(err)
 			hs.errChan <- err
 			return
 		}
@@ -44,7 +43,6 @@ func (hs *hostSession) dataChannelOnOpen() func() {
 
 		if !hs.nonInteractive {
 			if err = hs.makeRawTerminal(); err != nil {
-				log.Println(err)
 				hs.errChan <- err
 				return
 			}
@@ -59,7 +57,6 @@ func (hs *hostSession) dataChannelOnOpen() func() {
 		signal.Notify(c, os.Interrupt)
 		go func() {
 			for range c {
-				log.Println("Sigint")
 				hs.errChan <- errors.New("sigint")
 			}
 		}()
@@ -70,21 +67,17 @@ func (hs *hostSession) dataChannelOnOpen() func() {
 			if err != nil {
 				if err == io.EOF {
 					err = nil
-				} else {
-					log.Println(err)
 				}
 				hs.errChan <- err
 				return
 			}
 			if !hs.nonInteractive {
 				if _, err = os.Stdout.Write(buf[0:nr]); err != nil {
-					log.Println(err)
 					hs.errChan <- err
 					return
 				}
 			}
 			if err = hs.dc.Send(datachannel.PayloadBinary{Data: buf[0:nr]}); err != nil {
-				log.Println(err)
 				hs.errChan <- err
 				return
 			}
@@ -107,7 +100,6 @@ func (hs *hostSession) dataChannelOnMessage() func(payload datachannel.Payload) 
 				var msg []string
 				err := json.Unmarshal(p.Data, &msg)
 				if len(msg) == 0 {
-					log.Println(err)
 					hs.errChan <- err
 				}
 				if msg[0] == "stdin" {
@@ -117,7 +109,6 @@ func (hs *hostSession) dataChannelOnMessage() func(payload datachannel.Payload) 
 					}
 					_, err := hs.ptmx.Write([]byte(msg[1]))
 					if err != nil {
-						log.Println(err)
 						hs.errChan <- err
 					}
 					return
@@ -127,7 +118,6 @@ func (hs *hostSession) dataChannelOnMessage() func(payload datachannel.Payload) 
 					_ = json.Unmarshal(p.Data, &size)
 					ws, err := pty.GetsizeFull(hs.ptmx)
 					if err != nil {
-						log.Println(err)
 						hs.errChan <- err
 						return
 					}
@@ -140,7 +130,6 @@ func (hs *hostSession) dataChannelOnMessage() func(payload datachannel.Payload) 
 					}
 
 					if err := pty.Setsize(hs.ptmx, ws); err != nil {
-						log.Println(err)
 						hs.errChan <- err
 					}
 					return
@@ -157,7 +146,6 @@ func (hs *hostSession) dataChannelOnMessage() func(payload datachannel.Payload) 
 		case *datachannel.PayloadBinary:
 			_, err := hs.ptmx.Write(p.Data)
 			if err != nil {
-				log.Println(err)
 				hs.errChan <- err
 			}
 		default:
@@ -191,7 +179,6 @@ func (hs *hostSession) createOffer() (err error) {
 	// Create an offer to send to the browser
 	offer, err := hs.pc.CreateOffer(nil)
 	if err != nil {
-		log.Println(err)
 		return
 	}
 	hs.offer = sd.SessionDescription{
@@ -207,7 +194,7 @@ func (hs *hostSession) createOffer() (err error) {
 
 func (hs *hostSession) run() (err error) {
 	if err = hs.init(); err != nil {
-		return
+		return fmt.Errorf("couldn't init session: %v", err)
 	}
 	colorstring.Printf("[bold]Setting up a WebTTY connection.\n\n")
 	if hs.oneWay {
@@ -217,7 +204,7 @@ func (hs *hostSession) run() (err error) {
 	}
 
 	if err = hs.createOffer(); err != nil {
-		return
+		return fmt.Errorf("coudln't create offer: %v", err)
 	}
 
 	// Output the offer in base64 so we can paste it in browser
@@ -231,19 +218,16 @@ func (hs *hostSession) run() (err error) {
 		// Wait for the answer to be pasted
 		hs.answer.Sdp, err = hs.mustReadStdin()
 		if err != nil {
-			log.Println(err)
 			return
 		}
 		fmt.Println("Answer recieved, connecting...")
 	} else {
 		body, err := pollForResponse(hs.offer.TenKbSiteLoc)
 		if err != nil {
-			log.Println(err)
 			return err
 		}
 		hs.answer, err = sd.Decode(body)
 		if err != nil {
-			log.Println(err)
 			return err
 		}
 		hs.answer.Key = hs.offer.Key
@@ -252,23 +236,24 @@ func (hs *hostSession) run() (err error) {
 			return err
 		}
 	}
-	return hs.setHostRemoteDescriptionAndWait()
+
+	if err = hs.setHostRemoteDescription(); err != nil {
+		return fmt.Errorf("couldn't set remote description: %v", err)
+	}
+
+	return hs.wait()
 }
 
-func (hs *hostSession) setHostRemoteDescriptionAndWait() (err error) {
+func (hs *hostSession) setHostRemoteDescription() (err error) {
 	// Set the remote SessionDescription
 	answer := webrtc.RTCSessionDescription{
 		Type: webrtc.RTCSdpTypeAnswer,
 		Sdp:  hs.answer.Sdp,
 	}
+	return hs.pc.SetRemoteDescription(answer)
+}
 
-	// Apply the answer as the remote description
-	if err = hs.pc.SetRemoteDescription(answer); err != nil {
-		log.Println(err)
-		return
-	}
-
-	// Wait to quit
+func (hs *hostSession) wait() (err error) {
 	err = <-hs.errChan
 	hs.cleanup()
 	return
